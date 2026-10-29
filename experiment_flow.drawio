@@ -1,0 +1,107 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="mcu-bridge-flow" name="MCU Bridge Experiment Flow">
+    <mxGraphModel dx="664" dy="1475" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Bridge launched&lt;br&gt;(start_ncm.sh)" vertex="1">
+          <mxGeometry height="50" width="180" x="350" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="idle" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;" value="&lt;b&gt;IDLE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;serial closed&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="160" x="360" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="preparing" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;" value="&lt;b&gt;PREPARING&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Sensor calibrating + NTP sync&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="160" x="360" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="running" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;" value="&lt;b&gt;RUNNING&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;logging + publishing&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="160" x="360" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="open" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="Open serial port&lt;br&gt;(MCU leaves &lt;i&gt;setup()&lt;/i&gt; wait)" vertex="1">
+          <mxGeometry height="60" width="240" x="320" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="abort" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Close serial (MCU resets)&lt;br&gt;Start is &lt;b&gt;not&lt;/b&gt; published" vertex="1">
+          <mxGeometry height="70" width="260" x="660" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="ready" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=default;strokeColor=default;" value="Create CSV file&lt;br&gt;Publish &lt;b&gt;NCM/Experiment/Start&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;(DAQ starts recording)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="70" width="240" x="320" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="stop" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Save leftover samples&lt;br&gt;(not published)&lt;br&gt;Close CSV and serial (MCU resets)" vertex="1">
+          <mxGeometry height="80" width="190" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="buffer" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="Add sample to buffer&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;(velocity calculated per sample)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="240" x="320" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="full" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;i&gt;batch_size&lt;/i&gt;&lt;br&gt;samples buffered?" vertex="1">
+          <mxGeometry height="110" width="180" x="350" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="publish" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=light-dark(#D5E8D4,#000000);strokeColor=light-dark(#82B366,#FFFFFF);" value="Write batch to CSV&lt;br&gt;Publish &lt;b&gt;NCM/MCU/DisplayData&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;(averages, velocity from avg. diff)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="70" width="240" x="320" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="shape=note;size=15;whiteSpace=wrap;html=1;align=left;spacingLeft=8;spacingRight=8;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=11;" value="&lt;b&gt;Not shown&lt;/b&gt;&lt;br&gt;• Prepare while PREPARING / RUNNING: ignored&lt;br&gt;• Stop while IDLE: ignored&lt;br&gt;• Rename while PREPARING / RUNNING: stops like Stop, then sets the file name&lt;br&gt;• Rename while IDLE: sets the file name for the next run" vertex="1">
+          <mxGeometry height="140" width="260" x="720" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="e_start" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;" target="idle">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_prepare" edge="1" parent="1" source="idle" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;" target="open" value="&lt;b&gt;NCM/Experiment/Prepare&lt;/b&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_open" edge="1" parent="1" source="open" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;" target="preparing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_abort" edge="1" parent="1" source="preparing" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;strokeColor=#b85450;" target="abort" value="&lt;b&gt;!&lt;/b&gt; error line /&lt;br&gt;Stop / timeout">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_abort_idle" edge="1" parent="1" source="abort" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#b85450;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="idle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ready" edge="1" parent="1" source="preparing" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;strokeColor=#82b366;" target="ready" value="&lt;b&gt;@ ready&lt;/b&gt;&lt;br&gt;(after &lt;i&gt;cal&lt;/i&gt; and &lt;i&gt;sync&lt;/i&gt;)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ready_run" edge="1" parent="1" source="ready" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;" target="running">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_stop" edge="1" parent="1" source="running" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;strokeColor=#B85450;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="stop" value="&lt;b&gt;NCM/Experiment/Stop&lt;/b&gt;&lt;br&gt;/ serial unplugged">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_stop_idle" edge="1" parent="1" source="stop" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#b85450;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="idle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="95" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_data" edge="1" parent="1" source="running" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;" target="buffer" value="data line">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_buffer" edge="1" parent="1" source="buffer" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;" target="full">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_yes" edge="1" parent="1" source="full" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;strokeColor=light-dark(#82B366,#446E2C);" target="publish" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_no" edge="1" parent="1" source="full" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;strokeColor=light-dark(#B85450,#D7817E);" target="running" value="No">
+          <mxGeometry relative="1" x="-0.8" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="610" y="845" />
+              <mxPoint x="610" y="595" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_publish_run" edge="1" parent="1" source="publish" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" target="running">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="995" />
+              <mxPoint x="670" y="625" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

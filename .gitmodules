@@ -1,0 +1,3 @@
+[submodule "MCU/GenericMqtteLogger"]
+	path = MCU/GenericMqtteLogger
+	url = https://github.com/Mohawk-College-IIoT-Automation-Lab/GenericMqtteLogger.git

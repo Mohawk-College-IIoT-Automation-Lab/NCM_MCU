@@ -1,0 +1,4 @@
+pydantic>=2
+pyserial
+# GenericMqtteLogger uses the paho-mqtt 1.x API (Client() without callback_api_version)
+paho-mqtt<2.0

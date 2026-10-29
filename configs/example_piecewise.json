@@ -1,0 +1,32 @@
+{
+  "port": "/dev/ttyACM0",
+  "baud_rate": 115200,
+  "serial_read_timeout_s": 0.1,
+  "expected_location": null,
+  "batch_size": 20,
+  "prepare_timeout_s": 150.0,
+  "display_decimals": 2,
+  "data_dir": "./data",
+  "default_file_name": "mcu",
+  "sample_decimals": 4,
+  "sync_time_epoch": "unix",
+  "fluid_density_kg_m3": 1000.0,
+  "error_correction": {
+    "type": "piecewise_linear",
+    "x": [
+      0.0,
+      50.0,
+      200.0
+    ],
+    "y": [
+      0.0,
+      3.5,
+      16.0
+    ]
+  },
+  "mqtt_config": {
+    "host_name": "localhost",
+    "host_port": 1883
+  },
+  "client_name": "MCU-ttyACM0"
+}
