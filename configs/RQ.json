@@ -9,7 +9,7 @@
   "data_dir": "./data",
   "default_file_name": "mcu",
   "sample_decimals": 4,
-  "sync_time_epoch": "unix",
+  "sync_time_epoch": "ntp",
   "fluid_density_kg_m3": 1000.0,
   "error_correction": {
     "type": "polynomial",

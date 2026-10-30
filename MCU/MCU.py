@@ -47,13 +47,13 @@ class MCU(GenericMQTT):
         # <text>      info message, logged
         ! <text>      error, logged; aborts a Prepare in progress
         @ <json>      structured message, "type" is one of: cal, sync, ready
-        t_ms,...      CSV header, ignored
-        <csv>         data: t_ms,p_1_mbar,p_2_mbar,diff_mbar
+        t_us,...      CSV header 
+        <csv>         data: t_us,p_sen_mbar,p_side_mbar,diff_mbar
     """
 
     _instance = None
 
-    CSV_COLUMNS = ["t_ms", "t_unix_ms", "p_1_mbar", "p_2_mbar", "diff_mbar", "velocity_m_s"]
+    CSV_COLUMNS = ["t_us", "t_unix_us", "p_sen_mbar", "p_side_mbar", "diff_mbar", "velocity_m_s"]
     MAX_BAD_LINE_LOGS = 10  # log the first N malformed lines, then every 1000th
 
     @classmethod
@@ -89,10 +89,13 @@ class MCU(GenericMQTT):
         # Start-up info from the MCU (reset for every Prepare)
         self._cal: Optional[CalibrationMsg] = None
         self._sync: Optional[SyncMsg] = None
-        self._sync_unix_ms = 0.0
+        self._sync_unix_us = 0  # Unix time (µs) of t_us == 0
 
         # File. A renamed file name sticks for later runs.
+        # Named:   <name>_<LOC>.csv
+        # Default: <default_file_name>_<LOC>_<YYYYmmdd_HHMMSS>.csv
         self._file_name = config.default_file_name
+        self._named = False
         self._file: Optional[TextIO] = None
         self._file_path: Optional[Path] = None
         self._csv_writer = None
@@ -292,31 +295,28 @@ class MCU(GenericMQTT):
         self._state = State.IDLE
 
     def _rename(self, file_name: str) -> None:
-        # Same idea as the DAQ: the name is used for the next file and sticks
-        # for later runs. If a file is open, it is closed and a new one is
-        # opened under the new name. Logging carries on without a gap.
+        # Same as the DAQ: a Rename stops the acquisition, so a running or 
+        # preparing MCU is stopped here too (leftovers saved, file and 
+        # serial closed, MCU resets). The name is used for the next run 
+        # and sticks for later runs.
+        if self._state != State.IDLE:
+            logging.info(f"[MCU] Rename received while {self._state.value}, stopping the measurements")
+            self._end_experiment()
+
         name = os.path.basename(file_name.strip())
         for ext in (".csv", ".tdms"):
             if name.lower().endswith(ext):
                 name = name[: -len(ext)]
         if not name:
             logging.error(
-                f"[MCU] File name '{file_name}' is empty, cannot rename",
+                f"[MCU] File name '{file_name}' is empty, keeping '{self._file_name}'",
                 extra={"error_code": ErrorCodes.FILE_ERROR},
             )
             return
 
         self._file_name = name
+        self._named = True
         logging.info(f"[MCU] File name set to '{name}'")
-
-        if self._file is not None:
-            self._close_file()
-            if not self._open_file():
-                logging.error(
-                    "[MCU] Could not open the renamed file, stopping",
-                    extra={"error_code": ErrorCodes.FILE_ERROR},
-                )
-                self._end_experiment()
 
     # ------------------------------------------------------------------ #
     # Serial parsing
@@ -339,7 +339,7 @@ class MCU(GenericMQTT):
                 self._end_experiment()
         elif tag == "@":
             self._handle_message(body)
-        elif line.startswith("t_ms"):
+        elif line.startswith("t_us"):
             logging.debug(f"[MCU][Serial] Header: {line}")
         elif self._state == State.RUNNING:
             self._handle_sample(line)
@@ -365,7 +365,7 @@ class MCU(GenericMQTT):
                     sync_us = self._sync.server_reference_time_us
                     if self._config.sync_time_epoch == "ntp":
                         sync_us -= NTP_TO_UNIX_EPOCH_US
-                    self._sync_unix_ms = sync_us / 1000.0
+                    self._sync_unix_us = sync_us
                     logging.info(f"[MCU][Serial] Time sync point: {self._sync_iso()}")
                 case "ready":
                     self._ready()
@@ -413,18 +413,18 @@ class MCU(GenericMQTT):
             self._bad_line(f"expected 4 fields, got {len(parts)}: {line}")
             return
         try:
-            t_ms = int(parts[0])
-            p_1, p_2, diff = float(parts[1]), float(parts[2]), float(parts[3])
+            t_us = int(parts[0])
+            p_sen, p_side, diff = float(parts[1]), float(parts[2]), float(parts[3])
         except ValueError:
             self._bad_line(f"not numeric: {line}")
             return
 
         self._batch.append(
             Sample(
-                t_ms=t_ms,
-                t_unix_ms=self._sync_unix_ms + t_ms,
-                p_1_mbar=p_1,
-                p_2_mbar=p_2,
+                t_us=t_us,
+                t_unix_us=self._sync_unix_us + t_us,  # integer µs, exact
+                p_sen_mbar=p_sen,
+                p_side_mbar=p_side,
                 diff_mbar=diff,
                 velocity=self._velocity(diff),
             )
@@ -446,8 +446,8 @@ class MCU(GenericMQTT):
             Location=self._cal.location,
             Pressure=Pressure(
                 DP=round(avg_diff, dec),
-                CH1=round(fmean(s.p_1_mbar for s in batch), dec),
-                CH2=round(fmean(s.p_2_mbar for s in batch), dec),
+                CH1=round(fmean(s.p_sen_mbar for s in batch), dec),
+                CH2=round(fmean(s.p_side_mbar for s in batch), dec),
             ),
             Velocity=round(self._velocity(avg_diff), dec),  # from the averaged diff
         )
@@ -458,13 +458,27 @@ class MCU(GenericMQTT):
     # ------------------------------------------------------------------ #
 
     def _sync_iso(self) -> str:
-        return datetime.fromtimestamp(self._sync_unix_ms / 1000.0, tz=timezone.utc).isoformat(
-            timespec="milliseconds"
+        return datetime.fromtimestamp(self._sync_unix_us / 1e6, tz=timezone.utc).isoformat(
+            timespec="microseconds"
         )
 
     def _open_file(self) -> bool:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_path = self._config.data_path / f"{self._file_name}_{self._cal.location.value}_{stamp}.csv"
+        location = self._cal.location.value
+        if self._named:
+            file_path = self._config.data_path / f"{self._file_name}_{location}.csv"
+            # Never overwrite an earlier run with the same name: add _1, _2, ...
+            n = 1
+            while file_path.exists():
+                file_path = self._config.data_path / f"{self._file_name}_{location}_{n}.csv"
+                n += 1
+            if n > 1:
+                logging.warning(
+                    f"[MCU] {self._file_name}_{location}.csv already exists, using {file_path.name}",
+                    extra={"error_code": ErrorCodes.FILE_ERROR},
+                )
+        else:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_path = self._config.data_path / f"{self._file_name}_{location}_{stamp}.csv"
         logging.debug(f"[MCU] Trying to create CSV file {file_path}")
 
         try:
@@ -474,8 +488,8 @@ class MCU(GenericMQTT):
                 "location": self._cal.location.value,
                 "port": self._config.port,
                 "client_name": self._config.client_name,
-                "ref1_mbar": self._cal.ref1_mbar,
-                "ref2_mbar": self._cal.ref2_mbar,
+                "ref_sen_mbar": self._cal.ref_sen_mbar,
+                "ref_side_mbar": self._cal.ref_side_mbar,
                 "pair_offset_mbar": self._cal.pair_offset_mbar,
                 "server_reference_time_us": self._sync.server_reference_time_us,
                 "sync_time_epoch": self._config.sync_time_epoch,
@@ -510,7 +524,7 @@ class MCU(GenericMQTT):
         dec = self._config.sample_decimals
         try:
             self._csv_writer.writerows(
-                (s.t_ms, f"{s.t_unix_ms:.3f}", s.p_1_mbar, s.p_2_mbar, s.diff_mbar, round(s.velocity, dec))
+                (s.t_us, s.t_unix_us, s.p_sen_mbar, s.p_side_mbar, s.diff_mbar, round(s.velocity, dec))
                 for s in batch
             )
             self._file.flush()

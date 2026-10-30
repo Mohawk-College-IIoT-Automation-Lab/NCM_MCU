@@ -18,8 +18,8 @@ class Location(StrEnum):
 
 class Pressure(BaseModel):
     DP: float  # avg diff_mbar
-    CH1: float  # avg p_1_mbar
-    CH2: float  # avg p_2_mbar
+    CH1: float  # avg p_sen_mbar
+    CH2: float  # avg p_side_mbar
 
 
 class MCUData(BaseModel):
@@ -34,27 +34,27 @@ class MCUData(BaseModel):
 
 
 class CalibrationMsg(BaseModel):
-    """@ {"type": "cal", "location": "LL", "ref1_mbar": .., "ref2_mbar": .., "pair_offset_mbar": ..}"""
+    """@ {"type": "cal", "location": "LL", "ref_sen_mbar": .., "ref_side_mbar": .., "pair_offset_mbar": ..}"""
 
     location: Location
-    ref1_mbar: float
-    ref2_mbar: float
+    ref_sen_mbar: float
+    ref_side_mbar: float
     pair_offset_mbar: float
 
 
 class SyncMsg(BaseModel):
-    """@ {"type": "sync", "server_reference_time_us": ..}  (absolute time of t_ms == 0)"""
+    """@ {"type": "sync", "server_reference_time_us": ..}  (absolute time of t_us == 0)"""
 
     server_reference_time_us: int
 
 
 class Sample(NamedTuple):
-    """One data line: t_ms,p_1_mbar,p_2_mbar,diff_mbar (+ t_unix_ms and velocity computed here).
+    """One data line: t_us,p_sen_mbar,p_side_mbar,diff_mbar (+ t_unix_us and velocity computed here).
     """
 
-    t_ms: int
-    t_unix_ms: float
-    p_1_mbar: float
-    p_2_mbar: float
+    t_us: int
+    t_unix_us: int
+    p_sen_mbar: float
+    p_side_mbar: float
     diff_mbar: float
     velocity: float

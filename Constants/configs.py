@@ -123,7 +123,7 @@ class LoggerConfig(BaseModel):
 class MCUConfig(BaseModel):
     # Serial
     port: str = "/dev/ttyACM0"
-    baud_rate: Optional[int] = 115200  # ignored by native USB CDC, kept for completeness
+    baud_rate: int = 115200  # ignored by native USB CDC, kept for completeness
     serial_read_timeout_s: float = 0.1  # how often the loop checks MQTT events
 
     # Expected location for this port. A mismatch is logged; the MCU wins.
