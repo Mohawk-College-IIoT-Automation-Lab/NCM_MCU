@@ -450,6 +450,7 @@ class MCU(GenericMQTT):
                 CH2=round(fmean(s.p_side_mbar for s in batch), dec),
             ),
             Velocity=round(self._velocity(avg_diff), dec),  # from the averaged diff
+            Timestamp=batch[0].t_unix_us,  # first sample of the batch, not averaged
         )
         self._publish(MCUMqttConfig.display_data_topic, mcu_data.model_dump_json())
 

@@ -26,6 +26,7 @@ class MCUData(BaseModel):
     Location: Location
     Pressure: Pressure
     Velocity: float  # m/s, from the averaged diff_mbar
+    Timestamp: int  # µs since 1970-01-01 UTC (t_unix_us of the first sample in the batch)
 
 
 # --------------------------------------------------------------------------- #
