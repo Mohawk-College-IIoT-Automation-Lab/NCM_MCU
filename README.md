@@ -5,11 +5,10 @@ Run one instance per MCU (LL, LQ, RQ, RR).
 
 ```
 main.py                     entry point: python3 main.py --config configs/LL.json
-start_mcus.sh               starts all four
 Constants/base_models.py    MQTT payloads (MCUData) and serial messages
 Constants/configs.py        topics, error codes, error correction types, MCUConfig
 MCU/MCU.py                  the bridge (state machine, serial parsing, CSV, MQTT)
-MCU/GenericMqtteLogger/     git submodule (see Install)
+MCU/GenericMqtteLogger/     git submodule
 configs/*.json              one config per MCU
 tools/fake_mcu.py           simulated MCU for testing without hardware
 ```
@@ -39,13 +38,13 @@ everything at the same time.
 
 One message per line. The first character says what the line is:
 
-| Tag      | Meaning                                 | Bridge action                                     |
-| -------- | --------------------------------------- | ------------------------------------------------- |
-| `#`      | human-readable message                  | logged (INFO)                                     |
-| `!`      | error                                   | logged (ERROR 4003); aborts a Prepare in progress |
-| `@`      | JSON message with `"type"`              | `cal`, `sync`, `ready` (see below)                |
-| `t_ms,…` | CSV header                              | ignored                                           |
-| none     | data `t_ms,p_1_mbar,p_2_mbar,diff_mbar` | used only while RUNNING                           |
+| Tag      | Meaning                                      | Bridge action                                     |
+| -------- | -------------------------------------------- | ------------------------------------------------- |
+| `#`      | human-readable message                       | logged (INFO)                                     |
+| `!`      | error                                        | logged (ERROR 4003); aborts a Prepare in progress |
+| `@`      | JSON message with `"type"`                   | `cal`, `sync`, `ready` (see below)                |
+| `t_ms,…` | CSV header                                   | ignored                                           |
+| none     | data `t_ms,p_sen_mbar,p_side_mbar,diff_mbar` | used only while RUNNING                           |
 
 If an `@` message has no `"type"`, it is recognised by its keys (`location` → cal,
 `server_reference_time_us` → sync, `ready` → ready) (order of `cal` and `sync` doesn't matter; `ready` must be last)
@@ -145,23 +144,23 @@ velocity  = sign(diff) * sqrt(2 * 100 * |corrected| / fluid_density)
 
 ## Config (`configs/<LOC>.json`)
 
-| Key                     | Default           | Notes                                                                                                   |
-| ----------------------- | ----------------- | ------------------------------------------------------------------------------------------------------- |
-| `port`                  | `/dev/ttyACM0`    | use the udev symlink, e.g. `/dev/ncm-mcu-LL`                                                            |
-| `baud_rate`             | 115200            | ignored by native USB, kept for completeness                                                            |
-| `serial_read_timeout_s` | 0.1               | how often MQTT events are checked while waiting                                                         |
-| `expected_location`     | null              | used to determine incorrect board enumeration. Mismatch with the MCU is logged (WARNING 4001); MCU wins |
-| `batch_size`            | 20                | buffer size for averaging and publishing                                                                |
-| `prepare_timeout_s`     | 60                | must be longer than the firmware's 30 s NTP timeout                                                     |
-| `display_decimals`      | 2                 | rounding of published values                                                                            |
-| `data_dir`              | `./data`          | relative to the project folder                                                                          |
-| `default_file_name`     | `mcu`             | → `mcu_LL_20261028_142501.csv`                                                                          |
-| `sample_decimals`       | 4                 | rounding of the per-sample velocity in the CSV                                                          |
-| `sync_time_epoch`       | `unix`            | `ntp` if `server_reference_time_us` counts from 1900                                                    |
-| `fluid_density_kg_m3`   | 1000              |                                                                                                         |
-| `error_correction`      | quadratic         | see below                                                                                               |
-| `mqtt_config`           | localhost:1883    |                                                                                                         |
-| `client_name`           | `MCU-<port name>` | MQTT client ID and log name; must be unique per instance                                                |
+| Key                     | Default          | Notes                                                                                                   |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `port`                  | `/dev/ttyACM0`   | use the udev symlink, e.g. `/dev/ncm-mcu-LL`                                                            |
+| `baud_rate`             | 115200           | ignored by native USB, kept for completeness                                                            |
+| `serial_read_timeout_s` | 0.1              | how often MQTT events are checked while waiting                                                         |
+| `expected_location`     | null             | used to determine incorrect board enumeration. Mismatch with the MCU is logged (WARNING 4001); MCU wins |
+| `batch_size`            | 20               | buffer size for averaging and publishing                                                                |
+| `prepare_timeout_s`     | 60               | must be longer than the firmware's 30 s NTP timeout                                                     |
+| `display_decimals`      | 2                | rounding of published values                                                                            |
+| `data_dir`              | `./data`         | relative to the project folder                                                                          |
+| `default_file_name`     | `mcu`            | → `mcu_LL_20261028_142501.csv`                                                                          |
+| `sample_decimals`       | 4                | rounding of the per-sample velocity in the CSV                                                          |
+| `sync_time_epoch`       | `unix`           | `ntp` if `server_reference_time_us` counts from 1900                                                    |
+| `fluid_density_kg_m3`   | 1000             |                                                                                                         |
+| `error_correction`      | quadratic        | see below                                                                                               |
+| `mqtt_config`           | localhost:1883   |                                                                                                         |
+| `client_name`           | `MCU-<location>` | MQTT client ID and log name; must be unique per instance                                                |
 
 ### Error correction
 
@@ -190,28 +189,24 @@ linear spline (3 points) or a calibration table. `x` is `|diff_mbar|`, so start 
 ```
 # location: LL
 # port: /dev/ncm-mcu-LL
-# ref1_mbar: 1013.251
-# ref2_mbar: 1012.874
+# ref_sen_mbar: 1013.251
+# ref_side_mbar: 1012.874
 # pair_offset_mbar: 0.377
 # server_reference_time_us: 1793210111932312
 # sync_time_utc: 2026-10-28T17:55:11.932+00:00
 # ... (batch size, density, error correction)
-t_ms,t_unix_ms,p_1_mbar,p_2_mbar,diff_mbar,velocity_m_s
+t_us,t_unix_ms,p_sen_mbar,p_side_mbar,diff_mbar,velocity_m_s
 0,1793210111932.312,1013.0,1013.0,0.0,0.0
 ```
 
-`t_unix_ms = server_reference_time_us / 1000 + t_ms`. Read with `pandas.read_csv(path, comment="#")`.
+`t_unix_us = server_reference_time_us + t_us`. Read with `pandas.read_csv(path, comment="#")`.
 
-The timestamp is always added to the name so a run never overwrites an earlier file
-(the DAQ reopens `<name>.tdms` with `"wb"` and overwrites it).
+The timestamp is added to the default name so a run never overwrites an earlier file.
 
 ## Stable port names (udev)
 
-To make sure boards
-
-udev can't choose the `ttyACM` number, but it can add a fixed symlink per board serial number.
 To make sure that a board is assigned a correct location in the software.
-The board's USB Serial number must be assigned a simbolic name everytime the board is
+The board's USB Serial number must be assigned a symbolic name everytime the board is
 connected to the NCM on startup.
 Do the following to find the serial number of a board:
 
